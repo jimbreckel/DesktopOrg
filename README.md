@@ -53,7 +53,12 @@
 
 ## Quick Start
 
-### 1. Build Portable Single-File Executable
+### Option A: One-Click Installer from GitHub Releases (Recommended)
+
+1. Download **`DesktopOrg-Setup.exe`** from the [**Latest GitHub Release**](https://github.com/jimbreckel/DesktopOrg/releases/latest).
+2. Double-click **`DesktopOrg-Setup.exe`** — it automatically installs `DesktopOrg.exe` to `%LocalAppData%\Programs\DesktopOrg`, creates a Start Menu shortcut, registers Windows Startup (`--tray`), adds the cascading **DesktopOrg** menu to the Windows Desktop right-click menu, and launches DesktopOrg.
+
+### Option B: Build from Source
 
 Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) on Windows:
 

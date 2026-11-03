@@ -68,6 +68,51 @@ public partial class App : System.Windows.Application
             a.Equals("--organize", StringComparison.OrdinalIgnoreCase) ||
             a.Equals("--apply", StringComparison.OrdinalIgnoreCase));
 
+        string currentExePath = Environment.ProcessPath ?? string.Empty;
+        string currentExeName = System.IO.Path.GetFileNameWithoutExtension(currentExePath);
+        bool isInstallMode = e.Args.Any(a => a.Equals("--install", StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrWhiteSpace(currentExeName) &&
+             (currentExeName.Contains("Setup", StringComparison.OrdinalIgnoreCase) ||
+              currentExeName.Contains("Install", StringComparison.OrdinalIgnoreCase)) &&
+             !string.Equals(System.IO.Path.GetFullPath(currentExePath), System.IO.Path.GetFullPath(DeskManagerService.InstalledExePath), StringComparison.OrdinalIgnoreCase));
+
+        if (isInstallMode)
+        {
+            try
+            {
+                int currentPid = Environment.ProcessId;
+                foreach (var proc in System.Diagnostics.Process.GetProcessesByName("DesktopOrg")
+                             .Concat(System.Diagnostics.Process.GetProcessesByName("MyReDesk")))
+                {
+                    if (proc.Id != currentPid)
+                    {
+                        try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                    }
+                }
+
+                var installerService = new DeskManagerService();
+                installerService.State.RunAtWindowsStartup = true;
+                installerService.State.UseDesktopContextMenu = true;
+                if (installerService.InstallToLocalPrograms(out _))
+                {
+                    installerService.SetRunAtStartup(true);
+                    DesktopNativeHook.SetDesktopContextMenuEnabled(true, installerService);
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = DeskManagerService.InstalledExePath,
+                        WorkingDirectory = DeskManagerService.InstalledProgramFolder,
+                        UseShellExecute = true
+                    });
+                    Shutdown();
+                    return;
+                }
+            }
+            catch
+            {
+                // Fall through to normal launch if self-install encounters an error
+            }
+        }
+
         _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool isNewInstance);
         if (!isNewInstance)
         {
