@@ -72,6 +72,7 @@ public partial class DeskZoneWindow : Window
         Loaded += (_, _) =>
         {
             ApplyAreaToUi();
+            UpdateWindowExtendedStyles();
         };
     }
 
@@ -80,33 +81,22 @@ public partial class DeskZoneWindow : Window
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            var source = HwndSource.FromHwnd(hwnd);
-            source?.AddHook(WndProc);
+            IntPtr progman = DesktopInterop.GetProgmanHandle();
+            if (progman != IntPtr.Zero)
+            {
+                SetWindowLongPtr64(hwnd, GWLP_HWNDPARENT, progman);
+            }
         }
 
+        UpdateWindowExtendedStyles();
         ApplyAreaToUi();
-    }
-
-    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        if (msg == WM_NCCALCSIZE)
-        {
-            // Strip 100% of Win32 non-client frame/border when AllowsTransparency="False"
-            handled = true;
-            return IntPtr.Zero;
-        }
-        if (msg == WM_NCHITTEST && _isLocked)
-        {
-            handled = true;
-            return new IntPtr(HTTRANSPARENT);
-        }
-        return IntPtr.Zero;
     }
 
     public void UpdateFromConfig(CustomAreaConfig area, bool isLocked)
     {
         Area = area;
         _isLocked = isLocked;
+        UpdateWindowExtendedStyles();
         ApplyAreaToUi();
     }
 
@@ -145,51 +135,36 @@ public partial class DeskZoneWindow : Window
         int finalPxW = Math.Max(80, pxW);
         int finalPxH = Math.Max(60, pxH);
 
-        Color grayCol = ParseColor(Area.GrayHex, Color.FromRgb(0x3B, 0x42, 0x52));
-        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
-
-        // Because the window itself uses Win32 SetLayeredWindowAttributes(alpha) for true translucency
-        // behind SHELLDLL_DefView (desktop icons), keep the WPF backbuffer solid grayCol so it blends cleanly
-        var solidGrayBrush = new SolidColorBrush(Color.FromRgb(grayCol.R, grayCol.G, grayCol.B));
-        Background = solidGrayBrush;
-        AreaBorder.Background = solidGrayBrush;
-
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            DesktopNativeHook.PositionAndAttachZoneWindow(
+            SetWindowPos(
                 hwnd,
+                IntPtr.Zero,
                 pxX,
                 pxY,
                 finalPxW,
                 finalPxH,
-                alpha,
-                (int)Math.Round(Area.CornerRadius),
-                _isLocked);
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
 
         var (scaleX, scaleY) = GetDpiScale();
-        int cornerRadiusPx = (int)Math.Round(Area.CornerRadius * scaleX);
 
+        Left = pxX / scaleX;
+        Top = pxY / scaleY;
         Width = finalPxW / scaleX;
         Height = finalPxH / scaleY;
-        if (!_isLocked)
-        {
-            Left = pxX / scaleX;
-            Top = pxY / scaleY;
-        }
 
         if (hwnd != IntPtr.Zero)
         {
-            DesktopNativeHook.PositionAndAttachZoneWindow(
+            SetWindowPos(
                 hwnd,
+                IntPtr.Zero,
                 pxX,
                 pxY,
                 finalPxW,
                 finalPxH,
-                alpha,
-                cornerRadiusPx,
-                _isLocked);
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
 
         AreaTitleText.Text = Area.Title;
@@ -205,14 +180,43 @@ public partial class DeskZoneWindow : Window
                 AreaTitleText.HorizontalAlignment = HorizontalAlignment.Left;
                 AreaTitleText.VerticalAlignment = VerticalAlignment.Top;
             }
-            else
+            else if (string.Equals(Area.LabelAlignment, "Top-Right", StringComparison.OrdinalIgnoreCase))
+            {
+                AreaTitleText.HorizontalAlignment = HorizontalAlignment.Right;
+                AreaTitleText.VerticalAlignment = VerticalAlignment.Top;
+            }
+            else if (string.Equals(Area.LabelAlignment, "Bottom-Left", StringComparison.OrdinalIgnoreCase))
+            {
+                AreaTitleText.HorizontalAlignment = HorizontalAlignment.Left;
+                AreaTitleText.VerticalAlignment = VerticalAlignment.Bottom;
+            }
+            else if (string.Equals(Area.LabelAlignment, "Center", StringComparison.OrdinalIgnoreCase))
             {
                 AreaTitleText.HorizontalAlignment = HorizontalAlignment.Center;
                 AreaTitleText.VerticalAlignment = VerticalAlignment.Center;
             }
+            else
+            {
+                // Default: Bottom-Right
+                AreaTitleText.HorizontalAlignment = HorizontalAlignment.Right;
+                AreaTitleText.VerticalAlignment = VerticalAlignment.Bottom;
+            }
         }
 
         AreaBorder.CornerRadius = new CornerRadius(Area.CornerRadius);
+
+        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
+        if (string.Equals(Area.GrayHex, "Transparent", StringComparison.OrdinalIgnoreCase))
+        {
+            AreaBorder.Background = _isLocked
+                ? Brushes.Transparent
+                : new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+        }
+        else
+        {
+            Color grayCol = ParseColor(Area.GrayHex, Color.FromRgb(0x3B, 0x42, 0x52));
+            AreaBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, grayCol.R, grayCol.G, grayCol.B));
+        }
 
         Color borderCol = ParseColor(Area.BorderHex, Color.FromRgb(0xE2, 0xE8, 0xF0));
 
@@ -227,7 +231,7 @@ public partial class DeskZoneWindow : Window
         }
         else
         {
-            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(borderCol.R, borderCol.G, borderCol.B));
+            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)Math.Clamp(alpha + 60, 130, 250), borderCol.R, borderCol.G, borderCol.B));
             AreaBorder.BorderThickness = new Thickness(1.5);
             AreaBorder.Cursor = Cursors.Arrow;
             EditBadge.Visibility = Visibility.Collapsed;
@@ -235,27 +239,32 @@ public partial class DeskZoneWindow : Window
         }
     }
 
-    public void EnsureVisibleOnDesktop()
+    private void UpdateWindowExtendedStyles()
     {
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero) return;
 
-        var (pxX, pxY, pxW, pxH) = _service.GetAreaScreenPixelBounds(Area);
-        int finalPxW = Math.Max(80, pxW);
-        int finalPxH = Math.Max(60, pxH);
-        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
-        var (scaleX, _) = GetDpiScale();
-        int cornerRadiusPx = (int)Math.Round(Area.CornerRadius * scaleX);
+        int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        exStyle |= WS_EX_TOOLWINDOW | WS_EX_LAYERED;
 
-        DesktopNativeHook.PositionAndAttachZoneWindow(
-            hwnd,
-            pxX,
-            pxY,
-            finalPxW,
-            finalPxH,
-            alpha,
-            cornerRadiusPx,
-            _isLocked);
+        if (_isLocked)
+        {
+            exStyle |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+        }
+        else
+        {
+            exStyle &= ~WS_EX_TRANSPARENT;
+            exStyle &= ~WS_EX_NOACTIVATE;
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+        }
+    }
+
+    public void EnsureVisibleOnDesktop()
+    {
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     private void AreaBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -138,7 +138,7 @@ public class CustomAreaConfig
     public string TextHex { get; set; } = "#FFFFFF";
     public double Opacity { get; set; } = 0.55;
     public double CornerRadius { get; set; } = 10;
-    public string LabelAlignment { get; set; } = "Center"; // "Center", "Top-Left", "Hidden"
+    public string LabelAlignment { get; set; } = "Bottom-Right"; // "Bottom-Right", "Bottom-Left", "Top-Left", "Top-Right", "Center", "Hidden"
     public bool IsVisible { get; set; } = true;
 
     // Auto-rule or manual assignment
@@ -198,6 +198,7 @@ public class SystemAreaSettings
     public string ShortcutDirection { get; set; } = "Left to Right"; // "Left to Right", "Top to Bottom", "Left to Right (Full Screen Width)"
     public bool SystemIconsFirst { get; set; } = true;
     public bool MigratedShortcutDirectionDefaultV2 { get; set; } = false;
+    public bool MigratedLabelBottomRightV2 { get; set; } = false;
 
     // File arrangement options
     public string FileSortBy { get; set; } = "Category & Name"; // "Category & Name", "Name (A-Z)", "Date Modified", "Extension"

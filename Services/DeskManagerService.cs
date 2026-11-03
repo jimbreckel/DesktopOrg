@@ -85,6 +85,22 @@ public class DeskManagerService
                 migrated = true;
             }
         }
+        if (!State.SystemArea.MigratedLabelBottomRightV2)
+        {
+            foreach (var area in State.CustomAreas)
+            {
+                area.LabelAlignment = "Bottom-Right";
+            }
+            foreach (var prof in State.Profiles)
+            {
+                foreach (var area in prof.CustomAreas)
+                {
+                    area.LabelAlignment = "Bottom-Right";
+                }
+            }
+            State.SystemArea.MigratedLabelBottomRightV2 = true;
+            migrated = true;
+        }
         if (migrated)
         {
             SaveState();
@@ -435,7 +451,7 @@ public class DeskManagerService
                 BorderHex = "#C0C6D0",
                 Opacity = 0.52,
                 CornerRadius = 10,
-                LabelAlignment = "Center",
+                LabelAlignment = "Bottom-Right",
                 AutoRule = "Manual (Drop Icons Here)",
                 SortOrder = "Keep Grid Position"
             },
@@ -452,7 +468,7 @@ public class DeskManagerService
                 BorderHex = "#C0C6D0",
                 Opacity = 0.52,
                 CornerRadius = 10,
-                LabelAlignment = "Center",
+                LabelAlignment = "Bottom-Right",
                 AutoRule = "Manual (Drop Icons Here)",
                 SortOrder = "Keep Grid Position"
             },
@@ -469,7 +485,7 @@ public class DeskManagerService
                 BorderHex = "#C0C6D0",
                 Opacity = 0.52,
                 CornerRadius = 10,
-                LabelAlignment = "Center",
+                LabelAlignment = "Bottom-Right",
                 AutoRule = "Manual (Drop Icons Here)",
                 SortOrder = "Keep Grid Position"
             },
@@ -486,7 +502,7 @@ public class DeskManagerService
                 BorderHex = "#C0C6D0",
                 Opacity = 0.52,
                 CornerRadius = 10,
-                LabelAlignment = "Center",
+                LabelAlignment = "Bottom-Right",
                 AutoRule = "Manual (Drop Icons Here)",
                 SortOrder = "Keep Grid Position"
             }

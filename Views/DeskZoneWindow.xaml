@@ -3,31 +3,31 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ReDeskGrayArea"
         WindowStyle="None"
-        AllowsTransparency="False"
-        Background="#8C929C"
+        AllowsTransparency="True"
+        Background="Transparent"
         ShowInTaskbar="False"
         Topmost="False"
         ResizeMode="NoResize"
         MinWidth="80"
         MinHeight="60">
-    <Grid Margin="0">
+    <Grid Margin="1">
         <Border x:Name="AreaBorder"
                 CornerRadius="10"
-                BorderThickness="1.5"
-                BorderBrush="#C0C6D0"
-                Background="#8C929C"
+                BorderThickness="1.2"
+                BorderBrush="#99C0C6D0"
+                Background="#808C929C"
                 MouseLeftButtonDown="AreaBorder_MouseLeftButtonDown"
                 SnapsToDevicePixels="True">
             <Grid>
-                <!-- ReDesk Centered / Top-Left Area Title -->
+                <!-- Area Title (Default: Bottom-Right) -->
                 <TextBlock x:Name="AreaTitleText"
                            Text="Fixed"
                            Foreground="#E6FFFFFF"
                            FontSize="17"
                            FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Margin="12,8"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Bottom"
+                           Margin="14,10"
                            IsHitTestVisible="False">
                     <TextBlock.Effect>
                         <DropShadowEffect ShadowDepth="1" BlurRadius="4" Color="#88000000" Opacity="0.5"/>

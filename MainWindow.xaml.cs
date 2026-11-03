@@ -802,7 +802,8 @@ public partial class MainWindow : Window
                 ("Smoked Charcoal (#282C34)", "#282C34"),
                 ("Slate Gray (#475569)", "#475569"),
                 ("Deep Graphite (#1E2028)", "#1E2028"),
-                ("Cool Silver (#A1A8B3)", "#A1A8B3")
+                ("Cool Silver (#A1A8B3)", "#A1A8B3"),
+                ("Border Only (No Gray Fill)", "Transparent")
             };
             foreach (var p in presets)
             {
@@ -852,7 +853,7 @@ public partial class MainWindow : Window
             bottomRowGrid.Children.Add(opacitySlider);
 
             var alignCombo = new ComboBox { Padding = new Thickness(6, 4, 6, 4) };
-            foreach (string al in new[] { "Center", "Top-Left", "Hidden" })
+            foreach (string al in new[] { "Bottom-Right", "Bottom-Left", "Top-Left", "Top-Right", "Center", "Hidden" })
             {
                 alignCombo.Items.Add(al);
             }
