@@ -101,6 +101,22 @@ public class DeskManagerService
             State.SystemArea.MigratedLabelBottomRightV2 = true;
             migrated = true;
         }
+        if (!State.SystemArea.MigratedBorderOnlyBoxV2)
+        {
+            foreach (var area in State.CustomAreas)
+            {
+                area.GrayHex = "Transparent";
+            }
+            foreach (var prof in State.Profiles)
+            {
+                foreach (var area in prof.CustomAreas)
+                {
+                    area.GrayHex = "Transparent";
+                }
+            }
+            State.SystemArea.MigratedBorderOnlyBoxV2 = true;
+            migrated = true;
+        }
         if (migrated)
         {
             SaveState();

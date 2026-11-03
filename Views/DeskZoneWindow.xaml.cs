@@ -231,8 +231,8 @@ public partial class DeskZoneWindow : Window
         }
         else
         {
-            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)Math.Clamp(alpha + 60, 130, 250), borderCol.R, borderCol.G, borderCol.B));
-            AreaBorder.BorderThickness = new Thickness(1.5);
+            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)Math.Clamp(alpha + 80, 175, 255), borderCol.R, borderCol.G, borderCol.B));
+            AreaBorder.BorderThickness = new Thickness(2.0);
             AreaBorder.Cursor = Cursors.Arrow;
             EditBadge.Visibility = Visibility.Collapsed;
             ResizeGrip.Visibility = Visibility.Collapsed;

@@ -13,9 +13,9 @@
     <Grid Margin="1">
         <Border x:Name="AreaBorder"
                 CornerRadius="10"
-                BorderThickness="1.2"
-                BorderBrush="#99C0C6D0"
-                Background="#808C929C"
+                BorderThickness="2"
+                BorderBrush="#D9E2E8F0"
+                Background="Transparent"
                 MouseLeftButtonDown="AreaBorder_MouseLeftButtonDown"
                 SnapsToDevicePixels="True">
             <Grid>

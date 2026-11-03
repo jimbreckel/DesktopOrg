@@ -798,12 +798,12 @@ public partial class MainWindow : Window
             var colorCombo = new ComboBox { Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(6, 4, 6, 4) };
             var presets = new (string Label, string Hex)[]
             {
+                ("Border Only (No Gray Fill)", "Transparent"),
                 ("Classic ReDesk Gray (#8C929C)", "#8C929C"),
                 ("Smoked Charcoal (#282C34)", "#282C34"),
                 ("Slate Gray (#475569)", "#475569"),
                 ("Deep Graphite (#1E2028)", "#1E2028"),
-                ("Cool Silver (#A1A8B3)", "#A1A8B3"),
-                ("Border Only (No Gray Fill)", "Transparent")
+                ("Cool Silver (#A1A8B3)", "#A1A8B3")
             };
             foreach (var p in presets)
             {

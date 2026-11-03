@@ -133,8 +133,8 @@ public class CustomAreaConfig
     public int GridHeightRows { get; set; } = 2;
 
     // Visual appearance
-    public string GrayHex { get; set; } = "#8C929C";
-    public string BorderHex { get; set; } = "#B8BEC8";
+    public string GrayHex { get; set; } = "Transparent";
+    public string BorderHex { get; set; } = "#E2E8F0";
     public string TextHex { get; set; } = "#FFFFFF";
     public double Opacity { get; set; } = 0.55;
     public double CornerRadius { get; set; } = 10;
@@ -199,6 +199,7 @@ public class SystemAreaSettings
     public bool SystemIconsFirst { get; set; } = true;
     public bool MigratedShortcutDirectionDefaultV2 { get; set; } = false;
     public bool MigratedLabelBottomRightV2 { get; set; } = false;
+    public bool MigratedBorderOnlyBoxV2 { get; set; } = false;
 
     // File arrangement options
     public string FileSortBy { get; set; } = "Category & Name"; // "Category & Name", "Name (A-Z)", "Date Modified", "Extension"
