@@ -15,6 +15,10 @@ public partial class DeskZoneWindow : Window
     private const int GWL_EXSTYLE = -20;
     private const int GWLP_HWNDPARENT = -8;
 
+    private const int WM_NCCALCSIZE = 0x0083;
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTTRANSPARENT = -1;
+
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_NOACTIVATE = 0x08000000;
@@ -68,7 +72,6 @@ public partial class DeskZoneWindow : Window
         Loaded += (_, _) =>
         {
             ApplyAreaToUi();
-            UpdateWindowExtendedStyles();
         };
     }
 
@@ -77,25 +80,33 @@ public partial class DeskZoneWindow : Window
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            // Set Progman (the Windows Desktop) as the owner of this top-level popup window.
-            // Owned windows ALWAYS render in front of their owner (Progman wallpaper) so they never
-            // fall behind the wallpaper, and they never minimize when pressing Win+D (Show Desktop).
-            IntPtr progman = DesktopInterop.GetProgmanHandle();
-            if (progman != IntPtr.Zero)
-            {
-                SetWindowLongPtr64(hwnd, GWLP_HWNDPARENT, progman);
-            }
+            var source = HwndSource.FromHwnd(hwnd);
+            source?.AddHook(WndProc);
         }
 
-        UpdateWindowExtendedStyles();
         ApplyAreaToUi();
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_NCCALCSIZE)
+        {
+            // Strip 100% of Win32 non-client frame/border when AllowsTransparency="False"
+            handled = true;
+            return IntPtr.Zero;
+        }
+        if (msg == WM_NCHITTEST && _isLocked)
+        {
+            handled = true;
+            return new IntPtr(HTTRANSPARENT);
+        }
+        return IntPtr.Zero;
     }
 
     public void UpdateFromConfig(CustomAreaConfig area, bool isLocked)
     {
         Area = area;
         _isLocked = isLocked;
-        UpdateWindowExtendedStyles();
         ApplyAreaToUi();
     }
 
@@ -134,39 +145,51 @@ public partial class DeskZoneWindow : Window
         int finalPxW = Math.Max(80, pxW);
         int finalPxH = Math.Max(60, pxH);
 
+        Color grayCol = ParseColor(Area.GrayHex, Color.FromRgb(0x3B, 0x42, 0x52));
+        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
+
+        // Because the window itself uses Win32 SetLayeredWindowAttributes(alpha) for true translucency
+        // behind SHELLDLL_DefView (desktop icons), keep the WPF backbuffer solid grayCol so it blends cleanly
+        var solidGrayBrush = new SolidColorBrush(Color.FromRgb(grayCol.R, grayCol.G, grayCol.B));
+        Background = solidGrayBrush;
+        AreaBorder.Background = solidGrayBrush;
+
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            // Move window to target monitor first so GetDpiForWindow reports the target monitor's exact DPI
-            SetWindowPos(
+            DesktopNativeHook.PositionAndAttachZoneWindow(
                 hwnd,
-                IntPtr.Zero,
                 pxX,
                 pxY,
                 finalPxW,
                 finalPxH,
-                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                alpha,
+                (int)Math.Round(Area.CornerRadius),
+                _isLocked);
         }
 
         var (scaleX, scaleY) = GetDpiScale();
+        int cornerRadiusPx = (int)Math.Round(Area.CornerRadius * scaleX);
 
-        // Update WPF DIP properties using the target monitor's DPI scale so UpdateLayeredWindow renders the exact size
-        Left = pxX / scaleX;
-        Top = pxY / scaleY;
         Width = finalPxW / scaleX;
         Height = finalPxH / scaleY;
+        if (!_isLocked)
+        {
+            Left = pxX / scaleX;
+            Top = pxY / scaleY;
+        }
 
         if (hwnd != IntPtr.Zero)
         {
-            // Re-enforce exact physical screen coordinates via Win32 SetWindowPos (preserving Z-order above Progman)
-            SetWindowPos(
+            DesktopNativeHook.PositionAndAttachZoneWindow(
                 hwnd,
-                IntPtr.Zero,
                 pxX,
                 pxY,
                 finalPxW,
                 finalPxH,
-                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                alpha,
+                cornerRadiusPx,
+                _isLocked);
         }
 
         AreaTitleText.Text = Area.Title;
@@ -191,10 +214,6 @@ public partial class DeskZoneWindow : Window
 
         AreaBorder.CornerRadius = new CornerRadius(Area.CornerRadius);
 
-        Color grayCol = ParseColor(Area.GrayHex, Color.FromRgb(0x3B, 0x42, 0x52));
-        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
-        AreaBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, grayCol.R, grayCol.G, grayCol.B));
-
         Color borderCol = ParseColor(Area.BorderHex, Color.FromRgb(0xE2, 0xE8, 0xF0));
 
         if (!_isLocked)
@@ -208,7 +227,7 @@ public partial class DeskZoneWindow : Window
         }
         else
         {
-            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)Math.Clamp(alpha + 60, 130, 250), borderCol.R, borderCol.G, borderCol.B));
+            AreaBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(borderCol.R, borderCol.G, borderCol.B));
             AreaBorder.BorderThickness = new Thickness(1.5);
             AreaBorder.Cursor = Cursors.Arrow;
             EditBadge.Visibility = Visibility.Collapsed;
@@ -216,34 +235,27 @@ public partial class DeskZoneWindow : Window
         }
     }
 
-    private void UpdateWindowExtendedStyles()
-    {
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero) return;
-
-        int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-        exStyle |= WS_EX_TOOLWINDOW | WS_EX_LAYERED;
-
-        if (_isLocked)
-        {
-            // Click-through & non-activating so native desktop icons receive all mouse events
-            exStyle |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-        }
-        else
-        {
-            // Interactive so the user can drag & resize directly on screen
-            exStyle &= ~WS_EX_TRANSPARENT;
-            exStyle &= ~WS_EX_NOACTIVATE;
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-        }
-    }
-
     public void EnsureVisibleOnDesktop()
     {
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero) return;
-        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+        var (pxX, pxY, pxW, pxH) = _service.GetAreaScreenPixelBounds(Area);
+        int finalPxW = Math.Max(80, pxW);
+        int finalPxH = Math.Max(60, pxH);
+        byte alpha = (byte)Math.Clamp((int)(Area.Opacity * 255), 55, 240);
+        var (scaleX, _) = GetDpiScale();
+        int cornerRadiusPx = (int)Math.Round(Area.CornerRadius * scaleX);
+
+        DesktopNativeHook.PositionAndAttachZoneWindow(
+            hwnd,
+            pxX,
+            pxY,
+            finalPxW,
+            finalPxH,
+            alpha,
+            cornerRadiusPx,
+            _isLocked);
     }
 
     private void AreaBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -24,20 +24,42 @@ public class DesktopNativeHook : IDisposable
 
     private const int GWL_STYLE = -16;
     private const int GWL_EXSTYLE = -20;
+    private const int GWLP_HWNDPARENT = -8;
     private const int WS_CHILD = 0x40000000;
     private const int WS_POPUP = unchecked((int)0x80000000);
+    private const int WS_VISIBLE = 0x10000000;
+    private const int WS_CLIPSIBLINGS = 0x04000000;
+    private const int WS_CAPTION = 0x00C00000;
+    private const int WS_THICKFRAME = 0x00040000;
+    private const int WS_SYSMENU = 0x00080000;
+    private const int WS_MINIMIZEBOX = 0x00020000;
+    private const int WS_MAXIMIZEBOX = 0x00010000;
+
     private const int WS_EX_LAYERED = 0x00080000;
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_NOACTIVATE = 0x08000000;
 
+    private const uint LWA_ALPHA = 0x00000002;
+
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
     private const uint SWP_SHOWWINDOW = 0x0040;
     private const uint SWP_FRAMECHANGED = 0x0020;
 
+    private static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    private static readonly IntPtr HWND_BOTTOM = new(1);
+
     private const int VK_LBUTTON = 0x01;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -64,10 +86,28 @@ public class DesktopNativeHook : IDisposable
     private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr GetParent(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+    [DllImport("user32.dll")]
+    private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(
@@ -113,78 +153,174 @@ public class DesktopNativeHook : IDisposable
     }
 
     /// <summary>
-    /// Attaches a WPF overlay window directly into the Windows Desktop hierarchy
-    /// (Progman / WorkerW behind SHELLDLL_DefView on Windows 11 24H2 and Windows 10/11)
-    /// so it behaves as part of the native Windows Desktop background.
+    /// Positions and attaches a Gray Box window directly into the Windows Desktop hierarchy
+    /// BEHIND SHELLDLL_DefView (SysListView32 desktop icons) and IN FRONT OF WorkerW (desktop wallpaper)
+    /// when locked, or detaches to top-level when unlocked so the user can drag & resize it.
     /// </summary>
-    public static bool AttachWindowToDesktopLayer(IntPtr overlayHwnd, bool isLockedClickThrough)
+    public static bool PositionAndAttachZoneWindow(
+        IntPtr overlayHwnd,
+        int screenX,
+        int screenY,
+        int widthPx,
+        int heightPx,
+        byte alpha,
+        int cornerRadiusPx,
+        bool isLocked)
     {
         if (overlayHwnd == IntPtr.Zero) return false;
 
         try
         {
             IntPtr progman = FindWindow("Progman", null);
-            if (progman == IntPtr.Zero) return false;
-
-            // Spawn WorkerW in Progman (works on both Win10/11 23H2 and Win11 24H2)
-            SendMessageTimeout(progman, WM_SPAWN_WORKER, new IntPtr(0xD), new IntPtr(1), SMTO_NORMAL, 1000, out _);
-            SendMessageTimeout(progman, WM_SPAWN_WORKER, IntPtr.Zero, IntPtr.Zero, SMTO_NORMAL, 1000, out _);
-
-            // Check Windows 11 24H2 architecture first:
-            // In Win11 24H2 (Build 26100/26300), Progman contains SHELLDLL_DefView AND a child WorkerW directly inside Progman!
-            IntPtr defViewInProgman = FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null);
-            IntPtr workerWInProgman = FindWindowEx(progman, IntPtr.Zero, "WorkerW", null);
-
-            if (defViewInProgman != IntPtr.Zero && workerWInProgman != IntPtr.Zero && isLockedClickThrough)
+            if (progman != IntPtr.Zero)
             {
-                // Windows 11 24H2 mode: parent into Progman and place in Z-order right behind SHELLDLL_DefView!
+                SendMessageTimeout(progman, WM_SPAWN_WORKER, new IntPtr(0xD), new IntPtr(1), SMTO_NORMAL, 1000, out _);
+                SendMessageTimeout(progman, WM_SPAWN_WORKER, IntPtr.Zero, IntPtr.Zero, SMTO_NORMAL, 1000, out _);
+            }
+
+            int diameter = Math.Max(4, cornerRadiusPx * 2);
+
+            if (!isLocked)
+            {
+                // Unlocked / Edit Mode: detach to top-level popup so mouse drag & resize work freely
+                if (GetParent(overlayHwnd) != IntPtr.Zero)
+                {
+                    SetParent(overlayHwnd, IntPtr.Zero);
+                }
+
                 int style = GetWindowLong(overlayHwnd, GWL_STYLE);
-                style = (style & ~WS_POPUP) | WS_CHILD;
+                style &= ~(WS_CHILD | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+                style |= WS_POPUP | WS_VISIBLE;
                 SetWindowLong(overlayHwnd, GWL_STYLE, style);
 
                 int exStyle = GetWindowLong(overlayHwnd, GWL_EXSTYLE);
-                exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+                exStyle |= WS_EX_LAYERED | WS_EX_TOOLWINDOW;
+                exStyle &= ~(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
                 SetWindowLong(overlayHwnd, GWL_EXSTYLE, exStyle);
 
-                SetParent(overlayHwnd, progman);
-                // Place overlayHwnd directly behind defViewInProgman (so desktop icons draw ON TOP of the gray box!)
-                SetWindowPos(overlayHwnd, defViewInProgman, 0, 0, 0, 0,
-                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+                if (progman != IntPtr.Zero)
+                {
+                    SetWindowLongPtr64(overlayHwnd, GWLP_HWNDPARENT, progman);
+                }
+
+                SetLayeredWindowAttributes(overlayHwnd, 0, alpha, LWA_ALPHA);
+                IntPtr hRgnUnlocked = CreateRoundRectRgn(0, 0, widthPx + 1, heightPx + 1, diameter, diameter);
+                SetWindowRgn(overlayHwnd, hRgnUnlocked, true);
+
+                SetWindowPos(
+                    overlayHwnd,
+                    IntPtr.Zero,
+                    screenX,
+                    screenY,
+                    widthPx,
+                    heightPx,
+                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
                 return true;
             }
 
-            // Classic Windows 10 / 11 23H2 mode: find top-level WorkerW behind the WorkerW hosting SHELLDLL_DefView
-            IntPtr classicWorkerW = IntPtr.Zero;
-            EnumWindows((topHwnd, _) =>
-            {
-                IntPtr shellDefView = FindWindowEx(topHwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
-                if (shellDefView != IntPtr.Zero)
-                {
-                    classicWorkerW = FindWindowEx(IntPtr.Zero, topHwnd, "WorkerW", null);
-                    return false;
-                }
-                return true;
-            }, IntPtr.Zero);
+            // Locked Mode: Embed BEHIND SHELLDLL_DefView (so desktop icons are ALWAYS in front of the gray box!)
+            IntPtr defViewInProgman = progman != IntPtr.Zero
+                ? FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null)
+                : IntPtr.Zero;
+            IntPtr workerWInProgman = progman != IntPtr.Zero
+                ? FindWindowEx(progman, IntPtr.Zero, "WorkerW", null)
+                : IntPtr.Zero;
 
-            if (classicWorkerW != IntPtr.Zero && isLockedClickThrough)
+            IntPtr hostParent = IntPtr.Zero;
+            IntPtr insertAfter = HWND_TOP;
+
+            if (defViewInProgman != IntPtr.Zero && progman != IntPtr.Zero)
             {
+                // Windows 11 24H2 (Build 26100/26300+) or unsplit Progman:
+                // SHELLDLL_DefView and WorkerW are children inside Progman
+                hostParent = progman;
+                insertAfter = defViewInProgman;
+            }
+            else
+            {
+                // Classic Windows 10 / 11 22H2-23H2: SHELLDLL_DefView is inside a top-level WorkerW,
+                // and a second top-level WorkerW sits behind it rendering the wallpaper
+                IntPtr iconWorkerW = IntPtr.Zero;
+                IntPtr shellDefView = IntPtr.Zero;
+                IntPtr classicWorkerW = IntPtr.Zero;
+
+                EnumWindows((topHwnd, _) =>
+                {
+                    IntPtr dv = FindWindowEx(topHwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
+                    if (dv != IntPtr.Zero)
+                    {
+                        iconWorkerW = topHwnd;
+                        shellDefView = dv;
+                        classicWorkerW = FindWindowEx(IntPtr.Zero, topHwnd, "WorkerW", null);
+                        return false;
+                    }
+                    return true;
+                }, IntPtr.Zero);
+
+                if (classicWorkerW != IntPtr.Zero)
+                {
+                    hostParent = classicWorkerW;
+                    insertAfter = HWND_TOP;
+                }
+                else if (iconWorkerW != IntPtr.Zero && shellDefView != IntPtr.Zero)
+                {
+                    hostParent = iconWorkerW;
+                    insertAfter = shellDefView;
+                }
+            }
+
+            if (hostParent != IntPtr.Zero)
+            {
+                SetWindowLongPtr64(overlayHwnd, GWLP_HWNDPARENT, IntPtr.Zero);
+
                 int style = GetWindowLong(overlayHwnd, GWL_STYLE);
-                style = (style & ~WS_POPUP) | WS_CHILD;
+                style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+                style |= WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS;
                 SetWindowLong(overlayHwnd, GWL_STYLE, style);
 
                 int exStyle = GetWindowLong(overlayHwnd, GWL_EXSTYLE);
                 exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
                 SetWindowLong(overlayHwnd, GWL_EXSTYLE, exStyle);
 
-                SetParent(overlayHwnd, classicWorkerW);
-                SetWindowPos(overlayHwnd, IntPtr.Zero, 0, 0, 0, 0,
-                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+                if (GetParent(overlayHwnd) != hostParent)
+                {
+                    SetParent(overlayHwnd, hostParent);
+                }
+
+                SetLayeredWindowAttributes(overlayHwnd, 0, alpha, LWA_ALPHA);
+                IntPtr hRgn = CreateRoundRectRgn(0, 0, widthPx + 1, heightPx + 1, diameter, diameter);
+                SetWindowRgn(overlayHwnd, hRgn, true);
+
+                POINT clientPt = new() { X = screenX, Y = screenY };
+                ScreenToClient(hostParent, ref clientPt);
+
+                if (hostParent == progman && defViewInProgman != IntPtr.Zero)
+                {
+                    // Keep SHELLDLL_DefView (desktop icons) at the very front of Progman
+                    SetWindowPos(defViewInProgman, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+
+                SetWindowPos(
+                    overlayHwnd,
+                    insertAfter,
+                    clientPt.X,
+                    clientPt.Y,
+                    widthPx,
+                    heightPx,
+                    SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+
+                if (hostParent == progman && workerWInProgman != IntPtr.Zero)
+                {
+                    // Keep WorkerW (wallpaper) at the very back of Progman behind all Gray Boxes
+                    SetWindowPos(workerWInProgman, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+
                 return true;
             }
         }
         catch
         {
-            // Fallback handled by DeskZoneWindow HWND_BOTTOM
+            // Fallback below
         }
 
         return false;
