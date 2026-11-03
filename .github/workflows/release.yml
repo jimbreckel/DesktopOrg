@@ -50,3 +50,4 @@ jobs:
             dist/DesktopOrg.exe
             Install-DesktopOrg.ps1
             Uninstall-DesktopOrg.ps1
+
