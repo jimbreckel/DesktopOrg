@@ -114,5 +114,12 @@ DesktopOrg/
 ├── App.xaml(.cs)               # Single-instance mutex, CLI router & System Tray context menu
 ├── MainWindow.xaml(.cs)        # WPF visual editor, monitor preview canvas & rules manager
 ├── Install-DesktopOrg.ps1      # Per-user installer script
-└── Uninstall-DesktopOrg.ps1    # Per-user uninstaller script
+├── Uninstall-DesktopOrg.ps1    # Per-user uninstaller script
+└── LICENSE                     # MIT License
 ```
+
+---
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
