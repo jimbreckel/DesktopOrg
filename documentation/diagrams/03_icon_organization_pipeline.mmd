@@ -1,0 +1,19 @@
+flowchart TD
+    Start(["Trigger: 'Apply & Organize Desktop' Button, Tray Menu, or Live Desktop Hook"]) --> LockHook["1. Set IsApplyingInternalChange = true<br/>Capture Undo Snapshot (93 Icons + Gray Boxes)"]
+    LockHook --> Calibrate["2. Calibrate Desktop Grid (CalibrateDesktopGrid)<br/>Query LVM_GETITEMSPACING (76x113) & Target Monitor WorkHeight<br/>Compute GridCols x GridRows (e.g. 45x11 on 3440x1440)<br/>Compute ListViewOrigin (+1920, 0) & ScreenOrigin (0, 0)"]
+    Calibrate --> ReadIcons["3. Read Desktop Icons via STA COM Thread<br/>IShellWindows -> IFolderView -> IShellFolder<br/>Classify: System, App Shortcuts (.lnk/.exe),<br/>Folders & Local Files, Web Bookmarks (.url)"]
+    ReadIcons --> ReserveGrid["4. Reserve Custom Gray Box Cells<br/>Mark Grid[col, row] occupied for visible Gray Boxes"]
+
+    ReserveGrid --> Pass1["5. Pass 1 & 2: Assign Icons to Custom Gray Boxes<br/>• Physical Match: Icons dropped inside a Box's Grid Bounds<br/>• AutoRule Match: Folders & Files, Web Links (.url), Folders, Shortcuts, Docs, Media"]
+    Pass1 --> SnapAreas["6. Pass 3: Snap Icons Inside Each Custom Gray Box<br/>Keep Grid Position (nearest free cell) or Sort (Name / Date)"]
+
+    SnapAreas --> SysArea["7. Pass 4: Arrange Remaining Icons on Main Desktop<br/>Apply Pinned Icons -> Check 3-Group Separation Toggle"]
+
+    SysArea --> SepCheck{"Split into Separate<br/>Column Groups?"}
+    SepCheck -- "Yes (Default)" --> GroupSplit["• Group 1: System Icons + App Shortcuts (.lnk/.exe)<br/>• [Optional 1-Column Empty Gap]<br/>• Group 2: Folders + Local Files (.pdf, .epub, .txt, scripts)<br/>• [Optional 1-Column Empty Gap]<br/>• Group 3: Web Bookmarks (.url)"]
+    SepCheck -- "No" --> GroupUnified["Unified Order: System Icons -> Pinned -> Folders -> Files"]
+
+    GroupSplit --> ApplyPos["8. Pass 5: Two-Pass IFolderView::SelectAndPositionItems<br/>Pass 1 moves all icons -> 35ms settle -> Pass 2 snaps exact cells<br/>(Prevents Windows Explorer grid-collision bumping)"]
+    GroupUnified --> ApplyPos
+
+    ApplyPos --> SyncBg["9. Pass 6: Sync High-DPI Gray Box Overlays & Save State<br/>Update DeskZoneWindow bounds via GetDpiForWindow & SetWindowPos<br/>Fire InternalChangeCompleted to update Live Hook baseline"]

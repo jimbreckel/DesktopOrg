@@ -1,0 +1,19 @@
+flowchart LR
+    subgraph MultiMon["Multi-Monitor & High-DPI Coordinate Translation (DeskManagerService)"]
+        direction TB
+        VS["SysListView32 VirtualScreen Space<br/>Origin = (MinX, MinY) e.g. (-1920, 0)<br/>Primary Monitor Icon Origin = (+1920, 0)"]
+        PS["Physical Screen & Per-Monitor DPI Space<br/>Primary Monitor Screen Origin = (0, 0)<br/>GetDpiForWindow(hwnd) -> Scale (e.g. 1.25x)"]
+        VS -. "GetMonitorOrigins() maps Grid (Col, Row)<br/>to exact matching physical cells" .-> PS
+    end
+
+    subgraph Win11_24H2["Windows 11 24H2+ Progman-Owned Overlay Architecture (DeskZoneWindow)"]
+        direction TB
+        Icons["Top Layer: SHELLDLL_DefView -> SysListView32<br/>(Native Desktop Icons Receive All Clicks)"]
+        Zones["Middle Layer: DeskZoneWindow (WS_POPUP)<br/>Owned by Progman via SetWindowLongPtr(GWLP_HWNDPARENT)<br/>WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW<br/>(Gray Boxes: Fixed, Plan, Ongoing, Finish, Custom)"]
+        Progman["Base Owner Layer: Progman / WorkerW<br/>(Desktop Wallpaper Surface)"]
+
+        Icons -. "Mouse clicks pass straight through<br/>locked Gray Boxes to Desktop Icons" .-> Zones
+        Zones -. "Progman Ownership guarantees Gray Boxes<br/>stay ABOVE Wallpaper & survive Win+D" .-> Progman
+    end
+
+    MultiMon --> Win11_24H2

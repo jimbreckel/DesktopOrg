@@ -1,0 +1,38 @@
+flowchart TB
+    subgraph UI["Presentation & UI Layer (WPF + WinForms Tray)"]
+        Tray["App.xaml.cs<br/>System Tray (NotifyIcon & ContextMenu)"]
+        MainWin["MainWindow.xaml<br/>Interactive Grid Editor & Settings UI"]
+        ZoneWin["DeskZoneWindow.xaml<br/>Translucent Gray Area Overlays"]
+    end
+
+    subgraph Core["Core Domain & Arrangement Engine"]
+        Service["DeskManagerService.cs<br/>Grid Calibration, Custom Areas,<br/>System Area Sorting, Profiles & Layouts"]
+        Models["AppModels.cs<br/>AppState, CustomAreaConfig, IconLayout,<br/>DesktopProfile, SystemAreaSettings"]
+    end
+
+    subgraph Native["Windows Desktop Native Hook & Win32/COM Interop"]
+        Hook["DesktopNativeHook.cs<br/>Progman / WorkerW Z-Order Injection,<br/>Live Drag-Drop Poller, FileSystemWatcher,<br/>Desktop Right-Click Registry Menu"]
+        Interop["DesktopInterop.cs<br/>COM IFolderView / IShellWindows,<br/>Win32 SysListView32 Fallback,<br/>Wallpaper GDI+ Compositor"]
+    end
+
+    subgraph OS["Windows 10 / Windows 11 (24H2 Build 26300+)"]
+        Explorer["explorer.exe<br/>Progman -> SHELLDLL_DefView -> SysListView32"]
+        Wallpaper["Windows Desktop Wallpaper<br/>SystemParametersInfo (SPI_SETDESKWALLPAPER)"]
+        Registry["Windows Registry (HKCU)<br/>Run at Startup & Directory\Background\shell"]
+        Storage["LocalAppData\MyReDesk<br/>myredesk_state_v2.json & Wallpaper Backup"]
+    end
+
+    Tray --> Service
+    Tray --> MainWin
+    MainWin --> Service
+    Service --> Models
+    Service --> ZoneWin
+    Service --> Interop
+    ZoneWin --> Hook
+    Hook --> Service
+    Hook --> Interop
+    Hook --> Explorer
+    Hook --> Registry
+    Interop --> Explorer
+    Interop --> Wallpaper
+    Service --> Storage

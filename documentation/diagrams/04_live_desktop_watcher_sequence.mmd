@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor User as User on Windows Desktop
+    participant Explorer as Windows Explorer (SysListView32)
+    participant FSW as FileSystemWatcher (User & Public Desktop)
+    participant Hook as DesktopNativeHook (350ms Poll & Debounce)
+    participant Service as DeskManagerService
+    participant Interop as DesktopInterop (COM IFolderView)
+
+    alt User Drags & Drops an Icon into a Gray Area ("Ongoing")
+        User->>Explorer: Click & hold Left Mouse Button (VK_LBUTTON down), drag icon
+        loop While VK_LBUTTON is held down
+            Hook->>Hook: Check GetAsyncKeyState(VK_LBUTTON) != 0 -> Skip (Never interrupt drag!)
+        end
+        User->>Explorer: Release mouse button inside "Ongoing" Gray Area
+        Hook->>Interop: GetDesktopIcons()
+        Interop-->>Hook: Returns updated (X, Y) coordinates (>12px delta detected)
+        Hook->>Hook: Start 450ms settle debounce timer
+        Hook->>Service: ApplyAndSaveChange()
+        Service->>Interop: SetDesktopIconPositions() -> Snaps icon cleanly to "Ongoing" grid cell
+        Interop->>Explorer: SelectAndPositionItems(SVSI_POSITIONITEM)
+    else New File Downloaded or Created on Desktop
+        User->>Explorer: Save / Download file to Desktop folder
+        Explorer->>FSW: Raises Created / Renamed event
+        FSW->>Hook: OnDesktopFileChanged() -> Sets _pendingDesktopRearrange = true
+        Hook->>Hook: Wait 450ms for Explorer to create desktop icon item
+        Hook->>Service: ApplyAndSaveChange()
+        Service->>Interop: Places new file cleanly into System Area (Files column) or matching Custom Area
+        Interop->>Explorer: SelectAndPositionItems(SVSI_POSITIONITEM)
+    end
+

@@ -1,0 +1,86 @@
+<Window x:Class="MyReDesk.Views.DeskZoneWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ReDeskGrayArea"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="False"
+        ResizeMode="NoResize"
+        MinWidth="80"
+        MinHeight="60">
+    <Grid Margin="1">
+        <Border x:Name="AreaBorder"
+                CornerRadius="10"
+                BorderThickness="1.2"
+                BorderBrush="#99C0C6D0"
+                Background="#808C929C"
+                MouseLeftButtonDown="AreaBorder_MouseLeftButtonDown"
+                SnapsToDevicePixels="True">
+            <Grid>
+                <!-- ReDesk Centered / Top-Left Area Title -->
+                <TextBlock x:Name="AreaTitleText"
+                           Text="Fixed"
+                           Foreground="#E6FFFFFF"
+                           FontSize="17"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="12,8"
+                           IsHitTestVisible="False">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="1" BlurRadius="4" Color="#88000000" Opacity="0.5"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+
+                <!-- Edit Mode Badge & Resize Handle (Only visible when Unlocked) -->
+                <Border x:Name="EditBadge"
+                        Visibility="Collapsed"
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Right"
+                        Background="#CC1F2937"
+                        CornerRadius="0,9,0,8"
+                        Padding="8,3">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="GridCoordsText"
+                                   Text="8×2"
+                                   Foreground="#93C5FD"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <Button Content="Lock"
+                                Click="LockButton_Click"
+                                Background="#2563EB"
+                                Foreground="White"
+                                BorderThickness="0"
+                                FontSize="10"
+                                Padding="6,1"
+                                Cursor="Hand"/>
+                    </StackPanel>
+                </Border>
+
+                <Thumb x:Name="ResizeGrip"
+                       Visibility="Collapsed"
+                       Width="20" Height="20"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Bottom"
+                       Cursor="SizeNWSE"
+                       DragDelta="ResizeGrip_DragDelta"
+                       DragCompleted="ResizeGrip_DragCompleted"
+                       ToolTip="Drag to resize gray area by grid cells">
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Grid Background="Transparent">
+                                <Path Data="M 4,16 L 16,4 M 9,16 L 16,9 M 14,16 L 16,14"
+                                      Stroke="#FFFFFF"
+                                      StrokeThickness="1.8"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

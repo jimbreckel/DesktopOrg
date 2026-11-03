@@ -1,0 +1,797 @@
+<Window x:Class="MyReDesk.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DesktopOrg — Desktop Icon &amp; Gray Box Organizer"
+        Icon="pack://application:,,,/Assets/DesktopOrg.ico"
+        Width="600"
+        Height="900"
+        MinWidth="520"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F6F8"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <!-- Rich Styled Tooltip -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="MaxWidth" Value="340"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter>
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="LineHeight" Value="18"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Circle Question Mark (?) Hover Badge -->
+        <Style x:Key="HelpCircleBadge" TargetType="Border">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#94A3B8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Help"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="50"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="30000"/>
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                    <Setter Property="BorderBrush" Value="#1D4ED8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HelpCircleText" TargetType="TextBlock">
+            <Setter Property="Text" Value="?"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#334155"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,-1,0,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Clean Card Style -->
+        <Style x:Key="CardBorder" TargetType="Border">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- Primary Action Button -->
+        <Style x:Key="SaveChangeButton" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#1D4ED8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bdr"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="18,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bdr" Property="Background" Value="#1D4ED8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bdr" Property="Background" Value="#1E40AF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button -->
+        <Style x:Key="OutlineButton" TargetType="Button">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bdr"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bdr" Property="Background" Value="#F3F4F6"/>
+                                <Setter TargetName="bdr" Property="BorderBrush" Value="#9CA3AF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Bar -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="18,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo & Brand -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Assets/DesktopOrg.png"
+                           Width="28"
+                           Height="28"
+                           Margin="0,0,8,0"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="DesktopOrg" FontSize="15" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Center Primary Button + Undo + (?) Hover -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button x:Name="SaveChangeBtn"
+                            Style="{StaticResource SaveChangeButton}"
+                            Click="SaveChangeBtn_Click"
+                            ToolTip="Snap desktop icons into your Gray Boxes and organize the rest of the desktop across your monitors">
+                        <TextBlock x:Name="SaveChangeBtnText" Text="Apply &amp; Organize Desktop"/>
+                    </Button>
+                    <Button Content="Undo"
+                            Style="{StaticResource OutlineButton}"
+                            Margin="6,0,0,0"
+                            Padding="10,6"
+                            Click="UndoBtn_Click"
+                            ToolTip="Restore all desktop icons to their exact positions before the last change"/>
+                    <Border Style="{StaticResource HelpCircleBadge}"
+                            ToolTip="Click 'Apply &amp; Organize Desktop' to immediately snap icons inside your Gray Boxes into clean grid cells, sort the remaining icons on your desktop into App Shortcuts, Folders &amp; Local Files, and Internet Shortcuts (.url), and update the System Tray &amp; Desktop Right-Click Menus. Click 'Undo' anytime to revert.">
+                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right Lock/Unlock Desktop Gray Areas Toggle -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ToggleDesktopDragBtn"
+                            Style="{StaticResource OutlineButton}"
+                            Click="ToggleDesktopDragBtn_Click"
+                            ToolTip="Unlock gray boxes on your actual desktop wallpaper so you can drag or resize them directly on any monitor">
+                        <TextBlock x:Name="ToggleDesktopDragText" Text="Unlock Desktop Boxes" FontSize="11.5"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Scrollable Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="22,16,22,20">
+            <StackPanel>
+
+                <!-- 1. DESKTOP LAYOUT PREVIEW (Interactive Grid Canvas) -->
+                <Grid Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="1. Desktop Layout Preview" FontSize="17" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource HelpCircleBadge}"
+                                ToolTip="This grid represents your currently selected monitor's desktop icon cells.&#x0a;• Switch 'Target Screen' below to view and add Gray Boxes on any monitor.&#x0a;• Drag any gray box to move it on that monitor, or drag its bottom-right corner to resize it.&#x0a;• Colored dots show where your current desktop icons sit:&#x0a;   – Blue = App Shortcuts (.lnk / .exe / .bat / .ps1 / System)&#x0a;   – Orange = Folders &amp; Local Files (.pdf, .epub, .txt, Folders)&#x0a;   – Purple = Internet Shortcuts (.url)">
+                            <TextBlock Style="{StaticResource HelpCircleText}"/>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="GridInfoText" Text="45×11 Grid" FontSize="11" Foreground="#6B7280" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button Content="Refresh Icons" Style="{StaticResource OutlineButton}" Padding="8,3" FontSize="11" Click="RefreshPreviewBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Multi-Monitor Target Display & Startup Quick-Setup Bar -->
+                <Border Style="{StaticResource CardBorder}" Padding="12,10" Background="#F8FAFC" Margin="0,0,0,8">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="Target Screen:" FontWeight="SemiBold" FontSize="12" Foreground="#1F2937" VerticalAlignment="Center"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="Switch between your connected monitors (labelled with their position, hardware model, and resolution) to view that monitor's icon grid and add or edit Gray Boxes on any screen.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+                            <ComboBox x:Name="TargetMonitorCombo"
+                                      Grid.Column="1"
+                                      Padding="8,4"
+                                      Margin="0,0,10,0"
+                                      SelectionChanged="TargetMonitorCombo_SelectionChanged"/>
+                            <CheckBox x:Name="GatherAllMonitorsCheck"
+                                      Grid.Column="2"
+                                      Content="Pull icons from all screens"
+                                      FontSize="11.5"
+                                      Foreground="#374151"
+                                      VerticalContentAlignment="Center"
+                                      ToolTip="When checked, brings loose desktop icons from all monitors onto the Target Screen when organizing. Uncheck to organize each monitor's desktop icons independently."
+                                      Checked="GatherAllMonitorsCheck_Changed"
+                                      Unchecked="GatherAllMonitorsCheck_Changed"/>
+                        </Grid>
+
+                        <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <CheckBox x:Name="TopRunAtStartupCheck"
+                                              Content="Start automatically when computer starts"
+                                              FontSize="12"
+                                              FontWeight="SemiBold"
+                                              Foreground="#1F2937"
+                                              VerticalContentAlignment="Center"
+                                              Checked="RunAtStartupCheck_Changed"
+                                              Unchecked="RunAtStartupCheck_Changed"/>
+                                    <Border Style="{StaticResource HelpCircleBadge}"
+                                            ToolTip="When checked, Windows automatically launches DesktopOrg silently into the System Tray when you sign in so your Gray Boxes and desktop icon layout are active immediately on startup.">
+                                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="InstallAppBtn"
+                                            Content="Install to Programs &amp; Start Menu"
+                                            Style="{StaticResource OutlineButton}"
+                                            Padding="10,4"
+                                            FontSize="11.5"
+                                            Click="InstallAppBtn_Click"
+                                            ToolTip="Copy DesktopOrg.exe to %LocalAppData%\Programs\DesktopOrg, create a Windows Start Menu shortcut, and point Startup &amp; Right-Click Menu entries to the installed location"/>
+                                    <Border Style="{StaticResource HelpCircleBadge}"
+                                            ToolTip="One-click user install (no Admin rights required):&#x0a;1. Copies DesktopOrg.exe to %LocalAppData%\Programs\DesktopOrg\DesktopOrg.exe&#x0a;2. Creates 'DesktopOrg' shortcut in your Windows Start Menu&#x0a;3. Points Windows Startup &amp; Desktop Right-Click Menu to the permanent install folder so moving your repo never breaks Startup.">
+                                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="Drag any gray box below to move it, or drag its bottom-right corner to resize. Dots show your current desktop icons."
+                           FontSize="11.5" Foreground="#6B7280" Margin="0,0,0,8"/>
+
+                <Border Background="#FFFFFF"
+                        BorderBrush="#CBD5E1"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Margin="0,0,0,20"
+                        Padding="2">
+                    <Canvas x:Name="GridPreviewCanvas"
+                            Height="215"
+                            Background="#F8FAFC"
+                            ClipToBounds="True"
+                            SizeChanged="GridPreviewCanvas_SizeChanged"/>
+                </Border>
+
+                <!-- 2. DESKTOP GRAY BOXES (CUSTOM ZONES) -->
+                <StackPanel Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                        <TextBlock Text="2. Desktop Gray Boxes (Zones)" FontSize="17" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource HelpCircleBadge}"
+                                ToolTip="Gray Boxes are shaded translucent areas on your desktop wallpaper across any of your monitors or Windows Virtual Desktops.&#x0a;• Delete default boxes (Fixed, Plan, Ongoing, Finish) using '✕' or 'Clear All Boxes'.&#x0a;• Create boxes on any monitor by selecting that monitor in 'Target Screen' above and clicking '+ Add Gray Box'.&#x0a;• Click any box row below to expand its settings (Screen/Monitor assignment, Virtual Desktop assignment, auto-sort rules, gray shade, opacity, or title alignment).">
+                            <TextBlock Style="{StaticResource HelpCircleText}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Load Category Boxes"
+                                Style="{StaticResource OutlineButton}"
+                                Padding="10,4"
+                                FontSize="11.5"
+                                Margin="0,0,8,0"
+                                Click="LoadCategoryBoxesBtn_Click"
+                                ToolTip="Replace current boxes with 'Folders &amp; Files' and 'Web Links (.url)' auto-sorting boxes"/>
+                        <Button Content="Reset Default 4"
+                                Style="{StaticResource OutlineButton}"
+                                Padding="10,4"
+                                FontSize="11.5"
+                                Margin="0,0,8,0"
+                                Click="ResetDefaultAreasBtn_Click"
+                                ToolTip="Restore Fixed, Plan, Ongoing, and Finish boxes"/>
+                        <Button Content="Clear All Boxes"
+                                Style="{StaticResource OutlineButton}"
+                                Foreground="#DC2626"
+                                Padding="10,4"
+                                FontSize="11.5"
+                                Click="ClearAllAreasBtn_Click"
+                                ToolTip="Delete all gray boxes so you can start fresh"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Quick Add Custom Gray Box Bar -->
+                <Border Style="{StaticResource CardBorder}" Padding="10" Background="#F8FAFC" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="New Box Name:" VerticalAlignment="Center" FontSize="12" Foreground="#374151" Margin="4,0,8,0"/>
+                        <TextBox x:Name="NewAreaNameBox"
+                                 Grid.Column="1"
+                                 Text="Projects"
+                                 Padding="8,5"
+                                 VerticalContentAlignment="Center"
+                                 Margin="0,0,8,0"/>
+                        <ComboBox x:Name="NewAreaRuleCombo"
+                                  Grid.Column="2"
+                                  Width="165"
+                                  Padding="6,5"
+                                  Margin="0,0,8,0"
+                                  ToolTip="Choose whether you will drag icons into this box manually or auto-collect a file type">
+                            <ComboBoxItem Content="Manual (Drop Icons Here)" IsSelected="True"/>
+                            <ComboBoxItem Content="Folders &amp; Files"/>
+                            <ComboBoxItem Content="Web Links (.url)"/>
+                            <ComboBoxItem Content="Folders"/>
+                            <ComboBoxItem Content="Shortcuts"/>
+                            <ComboBoxItem Content="Documents"/>
+                            <ComboBoxItem Content="Media"/>
+                            <ComboBoxItem Content="Code &amp; Archives"/>
+                        </ComboBox>
+                        <Button Grid.Column="3"
+                                Content="+ Add Gray Box"
+                                Style="{StaticResource SaveChangeButton}"
+                                Padding="14,5"
+                                FontSize="12"
+                                Click="AddCustomAreaBtn_Click"/>
+                    </Grid>
+                </Border>
+
+                <!-- Dynamic List of Custom Area Accordion Cards -->
+                <StackPanel x:Name="CustomAreasContainer" Margin="0,0,0,18"/>
+
+                <!-- 3. MAIN DESKTOP SORTING (Outside Gray Boxes) -->
+                <StackPanel Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                        <TextBlock Text="3. Main Desktop Sorting (Outside Boxes)" FontSize="17" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource HelpCircleBadge}"
+                                ToolTip="Controls how desktop icons that are NOT inside any Gray Box are organized on the rest of your screen (called 'System Area' in ReDesk).">
+                            <TextBlock Style="{StaticResource HelpCircleText}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <Border Style="{StaticResource CardBorder}" Padding="14,12" Margin="0,0,0,2">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                <CheckBox x:Name="SeparateFilesShortcutsCheck"
+                                          Content="Split App Shortcuts, Folders/Files &amp; Web Links into Separate Column Groups"
+                                          FontSize="12.5"
+                                          FontWeight="SemiBold"
+                                          Foreground="#1F2937"
+                                          VerticalContentAlignment="Center"
+                                          Checked="SystemAreaOption_Changed"
+                                          Unchecked="SystemAreaOption_Changed"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="When checked, DesktopOrg separates your icons into distinct column groups:&#x0a;1. System Icons &amp; App Shortcuts (.lnk / .exe / .bat / .ps1)&#x0a;2. Folders &amp; Local Files (.pdf, .epub, .txt, Folders)&#x0a;3. Internet Shortcuts (.url Chrome/Edge saved links)">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,10">
+                                <CheckBox x:Name="LeaveGapBetweenGroupsCheck"
+                                          Content="Leave 1 empty column gap between each group"
+                                          FontSize="12"
+                                          Foreground="#374151"
+                                          VerticalContentAlignment="Center"
+                                          Checked="SystemAreaOption_Changed"
+                                          Unchecked="SystemAreaOption_Changed"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="Adds an empty vertical column between your App Shortcuts block, your Folders &amp; Files block, and your Internet Shortcuts block so each group is visually distinct on your wallpaper.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+
+                            <Grid Margin="20,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="185"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                    <TextBlock Text="Web Links (.url) Group:" FontSize="12" Foreground="#374151" VerticalAlignment="Center"/>
+                                    <Border Style="{StaticResource HelpCircleBadge}"
+                                            ToolTip="Choose whether Chrome/Edge web bookmark icons (.url) get their own dedicated column group, or are placed with Files or App Shortcuts.">
+                                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                    </Border>
+                                </StackPanel>
+                                <ComboBox x:Name="WebLinksGroupCombo"
+                                          Grid.Row="0" Grid.Column="1"
+                                          Padding="6,4"
+                                          Margin="0,0,0,8"
+                                          SelectionChanged="SystemAreaOption_Changed">
+                                    <ComboBoxItem Content="Separate Group (Own Columns)"/>
+                                    <ComboBoxItem Content="Group with Files"/>
+                                    <ComboBoxItem Content="Group with App Shortcuts"/>
+                                </ComboBox>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Sort Web Links (.url) By:" FontSize="12" Foreground="#374151" VerticalAlignment="Center"/>
+                                    <Border Style="{StaticResource HelpCircleBadge}"
+                                            ToolTip="Choose how your internet shortcuts (.url files) are ordered:&#x0a;• Domain (A-Z): Reads each .url file and groups bookmarks by website domain alphabetically (e.g. google.com, microsoft.com, pypi.org, salesforce.com, stackoverflow.com).&#x0a;• Domain (Most Links First): Places domains with the most bookmarks first (e.g. all 8 google.com links, then 4 salesforce.com links, etc.).&#x0a;• Name (A-Z) / Date Modified: Standard title or date sorting.">
+                                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                    </Border>
+                                </StackPanel>
+                                <ComboBox x:Name="WebLinkSortCombo"
+                                          Grid.Row="1" Grid.Column="1"
+                                          Padding="6,4"
+                                          SelectionChanged="SystemAreaOption_Changed">
+                                    <ComboBoxItem Content="Domain (A-Z)"/>
+                                    <ComboBoxItem Content="Domain (Most Links First)"/>
+                                    <ComboBoxItem Content="Name (A-Z)"/>
+                                    <ComboBoxItem Content="Date Modified"/>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- App Shortcuts Sorting Options Accordion -->
+                <Border Style="{StaticResource CardBorder}">
+                    <Expander Header="App Shortcuts Sorting Options"
+                              FontWeight="SemiBold"
+                              FontSize="13"
+                              Foreground="#111827"
+                              Padding="12,8">
+                        <Grid Margin="4,10,4,4" TextElement.FontWeight="Normal">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="195"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                <TextBlock Text="Sort App Shortcuts By:" VerticalAlignment="Center" Foreground="#374151"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="Order in which application shortcuts (.lnk, .exe, .bat, .ps1) are sorted on the main desktop.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+                            <ComboBox x:Name="ShortcutSortCombo" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" SelectionChanged="SystemAreaOption_Changed">
+                                <ComboBoxItem Content="Name (A-Z)"/>
+                                <ComboBoxItem Content="Date Modified"/>
+                                <ComboBoxItem Content="Category"/>
+                            </ComboBox>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                <TextBlock Text="Fill Direction:" VerticalAlignment="Center" Foreground="#374151"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="'Top to Bottom' fills icons down each column first (standard Windows style). 'Left to Right' fills icons across rows.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+                            <ComboBox x:Name="ShortcutDirectionCombo" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" SelectionChanged="SystemAreaOption_Changed">
+                                <ComboBoxItem Content="Top to Bottom"/>
+                                <ComboBoxItem Content="Left to Right"/>
+                            </ComboBox>
+
+                            <CheckBox x:Name="SystemIconsFirstCheck"
+                                      Grid.Row="2" Grid.Column="1"
+                                      Content="Always place System Icons (This PC, Recycle Bin) at the very top-left"
+                                      Foreground="#374151"
+                                      Checked="SystemAreaOption_Changed"
+                                      Unchecked="SystemAreaOption_Changed"/>
+                        </Grid>
+                    </Expander>
+                </Border>
+
+                <!-- Folders & Files Sorting Options Accordion -->
+                <Border Style="{StaticResource CardBorder}">
+                    <Expander Header="Folders &amp; Files Sorting Options"
+                              FontWeight="SemiBold"
+                              FontSize="13"
+                              Foreground="#111827"
+                              Padding="12,8">
+                        <Grid Margin="4,10,4,4" TextElement.FontWeight="Normal">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="195"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                <TextBlock Text="Sort Folders &amp; Files By:" VerticalAlignment="Center" Foreground="#374151"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="Choose how documents, archives, images, and folders are ordered in the Files section.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+                            <ComboBox x:Name="FileSortCombo" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" SelectionChanged="SystemAreaOption_Changed">
+                                <ComboBoxItem Content="Category &amp; Name"/>
+                                <ComboBoxItem Content="Name (A-Z)"/>
+                                <ComboBoxItem Content="Date Modified"/>
+                                <ComboBoxItem Content="Extension"/>
+                            </ComboBox>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                <TextBlock Text="Fill Direction:" VerticalAlignment="Center" Foreground="#374151"/>
+                                <Border Style="{StaticResource HelpCircleBadge}"
+                                        ToolTip="'Top to Bottom' fills down columns; 'Left to Right' fills across rows.">
+                                    <TextBlock Style="{StaticResource HelpCircleText}"/>
+                                </Border>
+                            </StackPanel>
+                            <ComboBox x:Name="FileDirectionCombo" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" SelectionChanged="SystemAreaOption_Changed">
+                                <ComboBoxItem Content="Top to Bottom"/>
+                                <ComboBoxItem Content="Left to Right"/>
+                            </ComboBox>
+
+                            <CheckBox x:Name="FoldersBeforeFilesCheck"
+                                      Grid.Row="2" Grid.Column="1"
+                                      Content="Group all Folders ahead of individual files"
+                                      Foreground="#374151"
+                                      Checked="SystemAreaOption_Changed"
+                                      Unchecked="SystemAreaOption_Changed"/>
+                        </Grid>
+                    </Expander>
+                </Border>
+
+                <!-- Pinned & Locked Icons -->
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,8">
+                    <TextBlock Text="Pinned &amp; Locked Desktop Icons"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               Foreground="#111827"
+                               VerticalAlignment="Center"/>
+                    <Border Style="{StaticResource HelpCircleBadge}"
+                            ToolTip="Pin specific desktop icons (like Recycle Bin, Microsoft Edge, or a favorite folder) so they always stay first, stay in the bottom-left corner, or are locked in place so auto-organize never moves them.">
+                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel x:Name="SpecialShortcutsContainer"/>
+
+                <Button Content="+ Pin / Lock Another Icon"
+                        Style="{StaticResource OutlineButton}"
+                        HorizontalAlignment="Left"
+                        Margin="0,4,0,22"
+                        Click="AddSpecialShortcutBtn_Click"/>
+
+                <!-- 4. DESKTOP INTEGRATION & BEHAVIOR -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock Text="4. Desktop Integration &amp; Behavior" FontSize="17" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                    <Border Style="{StaticResource HelpCircleBadge}"
+                            ToolTip="Configure how Gray Boxes are rendered on your Windows Desktop, enable the Windows right-click cascading monitor menu, and control monitor setup layout memory and live auto-snapping.">
+                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                    </Border>
+                </StackPanel>
+
+                <Border Style="{StaticResource CardBorder}" Padding="16,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="245"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="Gray Box Display Mode" VerticalAlignment="Center" FontSize="12.5" Foreground="#1F2937"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="• Desktop Hook Layer (Recommended): Embeds translucent click-through gray boxes directly into the Windows Desktop behind your icons across all monitors.&#x0a;• Wallpaper Behind Icons: Draws the gray boxes onto a copy of your wallpaper image (zero windows, 100% behind icons).&#x0a;• Show Only When Editing: Hides gray boxes during normal use and only shows them when unlocked.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+                        <ComboBox x:Name="AreaBgModeCombo"
+                                  Grid.Row="0" Grid.Column="1"
+                                  Margin="0,0,0,12"
+                                  Padding="8,5"
+                                  SelectionChanged="AreaBgModeCombo_SelectionChanged">
+                            <ComboBoxItem Tag="Overlay" Content="Show Gray Boxes (Desktop Hook Layer)"/>
+                            <ComboBoxItem Tag="Wallpaper" Content="Show Gray Boxes (Wallpaper Behind Icons)"/>
+                            <ComboBoxItem Tag="Both" Content="Show Gray Boxes (Both Layer + Wallpaper)"/>
+                            <ComboBoxItem Tag="EditOnly" Content="Show Gray Boxes Only When Unlocked/Editing"/>
+                            <ComboBoxItem Tag="Hidden" Content="Hide All Gray Box Backgrounds"/>
+                        </ComboBox>
+
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="Windows Right-Click Menu" VerticalAlignment="Center" FontSize="12.5" Foreground="#1F2937"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="Adds 'DesktopOrg' to the Windows Desktop right-click menu with a complete hierarchy organized by Monitor Name → App Shortcuts, Folders &amp; Local Files, Internet Shortcuts (.url), and each Gray Box on that monitor. Clicking any group opens the full icon-rendered menu right at your cursor.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+                        <ComboBox x:Name="UseDesktopMenuCombo"
+                                  Grid.Row="1" Grid.Column="1"
+                                  Margin="0,0,0,12"
+                                  Padding="8,5"
+                                  SelectionChanged="UseDesktopMenuCombo_SelectionChanged">
+                            <ComboBoxItem Tag="Yes" Content="Enabled (Cascading Monitor &amp; Groups Menu)"/>
+                            <ComboBoxItem Tag="No" Content="Disabled"/>
+                        </ComboBox>
+
+                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="Monitor Setup Switch Mode" VerticalAlignment="Center" FontSize="12.5" Foreground="#1F2937"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="Controls what happens when you dock/undock or lose access to a monitor:&#x0a;• Remember Layout per Monitor Setup (Fallback: Hide Offline): Automatically restores the exact saved layout &amp; Gray Boxes for that specific monitor topology if one exists, or falls back to hiding any disconnected monitor's Gray Boxes while keeping its items in the menu.&#x0a;• Keep Current Layout &amp; Hide Offline Monitor Boxes: Keeps your current layout and simply hides Gray Boxes belonging to unplugged monitors until they reconnect.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+                        <ComboBox x:Name="DisconnectedMonitorModeCombo"
+                                  Grid.Row="2" Grid.Column="1"
+                                  Margin="0,0,0,12"
+                                  Padding="8,5"
+                                  SelectionChanged="DisconnectedMonitorModeCombo_SelectionChanged">
+                            <ComboBoxItem Tag="RememberSetupOrHide" Content="Remember Layout per Monitor Setup (Fallback: Hide Offline)"/>
+                            <ComboBoxItem Tag="HideOfflineOnly" Content="Keep Current Layout &amp; Hide Offline Monitor Boxes"/>
+                        </ComboBox>
+
+                        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="Active Workspace Profile" VerticalAlignment="Center" FontSize="12.5" Foreground="#1F2937"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="Switch between different sets of Gray Boxes and desktop states (e.g. Default 4 Boxes, Category Boxes, or Clean Presentation Mode which hides all icons for screen sharing).">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+                        <ComboBox x:Name="ProfileCombo"
+                                  Grid.Row="3" Grid.Column="1"
+                                  Margin="0,0,0,12"
+                                  Padding="8,5"
+                                  SelectionChanged="ProfileCombo_SelectionChanged"/>
+
+                        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                            <CheckBox x:Name="LiveDesktopHookCheck"
+                                      Content="Live Desktop Auto-Snap: Snap icons automatically when dragged &amp; dropped on desktop"
+                                      Foreground="#374151"
+                                      VerticalContentAlignment="Center"
+                                      Checked="GeneralCheck_Changed"
+                                      Unchecked="GeneralCheck_Changed"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="When enabled, DesktopOrg watches your desktop in the background. When you drag an icon into a Gray Box and release the mouse button (or download a new file to the Desktop), it automatically snaps into place.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                            <CheckBox x:Name="AutoRestoreMonitorsCheck"
+                                      Content="Auto-restore matching saved layout when monitors are docked/undocked"
+                                      Foreground="#374151"
+                                      VerticalContentAlignment="Center"
+                                      Checked="GeneralCheck_Changed"
+                                      Unchecked="GeneralCheck_Changed"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="If Windows scrambles your icons when switching monitors or changing screen resolution, DesktopOrg automatically restores the snapshot saved for that display setup.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <CheckBox x:Name="RunAtStartupCheck"
+                                      Content="Start DesktopOrg automatically when computer starts (in System Tray)"
+                                      Foreground="#374151"
+                                      VerticalContentAlignment="Center"
+                                      Checked="RunAtStartupCheck_Changed"
+                                      Unchecked="RunAtStartupCheck_Changed"/>
+                            <Border Style="{StaticResource HelpCircleBadge}"
+                                    ToolTip="Registers DesktopOrg in Windows CurrentVersion\Run (--tray) so your Gray Boxes and desktop icon layout start automatically every time your computer boots.">
+                                <TextBlock Style="{StaticResource HelpCircleText}"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 5. SAVED ICON LAYOUT SNAPSHOTS -->
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
+                    <TextBlock Text="5. Saved Desktop Backups &amp; Layouts" FontSize="16" FontWeight="Bold" Foreground="#111827" VerticalAlignment="Center"/>
+                    <Border Style="{StaticResource HelpCircleBadge}"
+                            ToolTip="Save named backups of your exact desktop icon positions and Gray Boxes so you can restore them with 1 click anytime.">
+                        <TextBlock Style="{StaticResource HelpCircleText}"/>
+                    </Border>
+                </StackPanel>
+
+                <Border Style="{StaticResource CardBorder}" Padding="14">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="NewLayoutNameBox"
+                                     Grid.Column="0"
+                                     Padding="8,6"
+                                     VerticalContentAlignment="Center"
+                                     Text="Work Desktop Backup"
+                                     Margin="0,0,8,0"/>
+                            <Button Grid.Column="1"
+                                    Content="Save Current Backup"
+                                    Style="{StaticResource OutlineButton}"
+                                    Click="SaveSnapshotBtn_Click"/>
+                        </Grid>
+
+                        <StackPanel x:Name="SavedLayoutsContainer"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="18,8">
+            <Grid>
+                <TextBlock x:Name="StatusText"
+                           Text="Ready — Hover over any (?) icon for help, or click 'Apply &amp; Organize Desktop'."
+                           FontSize="11.5"
+                           Foreground="#4B5563"
+                           VerticalAlignment="Center"/>
+                <Button Content="Minimize to Tray"
+                        Style="{StaticResource OutlineButton}"
+                        HorizontalAlignment="Right"
+                        Padding="10,3"
+                        FontSize="11"
+                        Click="HideToTrayBtn_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
