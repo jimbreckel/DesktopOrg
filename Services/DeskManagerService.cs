@@ -69,6 +69,26 @@ public class DeskManagerService
 
         CalibrateDesktopGrid();
         EnsureDefaults();
+
+        bool migrated = false;
+        if (!State.SystemArea.MigratedShortcutDirectionDefaultV2)
+        {
+            State.SystemArea.ShortcutDirection = "Left to Right";
+            State.SystemArea.MigratedShortcutDirectionDefaultV2 = true;
+            migrated = true;
+        }
+        foreach (var area in State.CustomAreas)
+        {
+            if (string.IsNullOrWhiteSpace(area.FillDirection))
+            {
+                area.FillDirection = "Left to Right";
+                migrated = true;
+            }
+        }
+        if (migrated)
+        {
+            SaveState();
+        }
     }
 
     public void SaveState()
@@ -1113,11 +1133,14 @@ public class DeskManagerService
         int startR = area.GridRow;
         int wCols = Math.Max(1, area.GridWidthCols);
         int hRows = Math.Max(1, area.GridHeightRows);
+        bool fillTopToBottom = string.Equals(area.FillDirection, "Top to Bottom", StringComparison.OrdinalIgnoreCase);
 
         if (string.Equals(area.SortOrder, "Keep Grid Position", StringComparison.OrdinalIgnoreCase))
         {
             bool[,] cellUsed = new bool[wCols, hRows];
-            var orderedByCurrent = icons.OrderBy(i => i.GridRow).ThenBy(i => i.GridCol).ToList();
+            var orderedByCurrent = fillTopToBottom
+                ? icons.OrderBy(i => i.GridCol).ThenBy(i => i.GridRow).ToList()
+                : icons.OrderBy(i => i.GridRow).ThenBy(i => i.GridCol).ToList();
 
             foreach (var icon in orderedByCurrent)
             {
@@ -1131,7 +1154,7 @@ public class DeskManagerService
                 }
                 else
                 {
-                    var (freeC, freeR) = FindFirstFreeLocalCell(cellUsed, wCols, hRows);
+                    var (freeC, freeR) = FindFirstFreeLocalCell(cellUsed, wCols, hRows, fillTopToBottom);
                     cellUsed[freeC, freeR] = true;
                     SetIconToCellOnMonitor(icon, startC + freeC, startR + freeR, mon, monitors);
                 }
@@ -1153,21 +1176,34 @@ public class DeskManagerService
             int idx = 0;
             foreach (var icon in sorted)
             {
-                int localC = idx % wCols;
-                int localR = (idx / wCols) % hRows;
+                int localC = fillTopToBottom ? (idx / hRows) % wCols : idx % wCols;
+                int localR = fillTopToBottom ? idx % hRows : (idx / wCols) % hRows;
                 SetIconToCellOnMonitor(icon, startC + localC, startR + localR, mon, monitors);
                 idx++;
             }
         }
     }
 
-    private static (int c, int r) FindFirstFreeLocalCell(bool[,] used, int wCols, int hRows)
+    private static (int c, int r) FindFirstFreeLocalCell(bool[,] used, int wCols, int hRows, bool topToBottom = false)
     {
-        for (int r = 0; r < hRows; r++)
+        if (topToBottom)
         {
             for (int c = 0; c < wCols; c++)
             {
-                if (!used[c, r]) return (c, r);
+                for (int r = 0; r < hRows; r++)
+                {
+                    if (!used[c, r]) return (c, r);
+                }
+            }
+        }
+        else
+        {
+            for (int r = 0; r < hRows; r++)
+            {
+                for (int c = 0; c < wCols; c++)
+                {
+                    if (!used[c, r]) return (c, r);
+                }
             }
         }
         return (wCols - 1, hRows - 1);
@@ -1280,23 +1316,46 @@ public class DeskManagerService
                 .Where(i => !shortcutsGroup.Contains(i) && !sortedFilesGroup.Contains(i));
             var webLinksGroup = SortWebLinkGroup(rawWebLinks, settings.WebLinkSortBy).ToList();
 
-            int currentStartCol = 0;
+            bool fullWidthRows = string.Equals(settings.ShortcutDirection, "Left to Right (Full Screen Width)", StringComparison.OrdinalIgnoreCase);
 
-            if (shortcutsGroup.Count > 0)
+            if (fullWidthRows)
             {
-                int lastShortcutCol = PlaceGroupInSystemAreaOnMonitor(shortcutsGroup, occupied, cols, rows, currentStartCol, settings.ShortcutDirection, mon, monitors);
-                currentStartCol = Math.Min(cols - 1, lastShortcutCol + 1 + colGap);
+                int currentStartRow = 0;
+                if (shortcutsGroup.Count > 0)
+                {
+                    int lastRow = PlaceGroupFullWidthRowMajor(shortcutsGroup, occupied, cols, rows, currentStartRow, mon, monitors);
+                    currentStartRow = Math.Min(rows - 1, lastRow + 1);
+                }
+                if (sortedFilesGroup.Count > 0)
+                {
+                    int lastRow = PlaceGroupFullWidthRowMajor(sortedFilesGroup, occupied, cols, rows, currentStartRow, mon, monitors);
+                    currentStartRow = Math.Min(rows - 1, lastRow + 1);
+                }
+                if (webLinksGroup.Count > 0)
+                {
+                    PlaceGroupFullWidthRowMajor(webLinksGroup, occupied, cols, rows, currentStartRow, mon, monitors);
+                }
             }
-
-            if (sortedFilesGroup.Count > 0)
+            else
             {
-                int lastFileCol = PlaceGroupInSystemAreaOnMonitor(sortedFilesGroup, occupied, cols, rows, currentStartCol, settings.FileDirection, mon, monitors);
-                currentStartCol = Math.Min(cols - 1, lastFileCol + 1 + colGap);
-            }
+                int currentStartCol = 0;
 
-            if (webLinksGroup.Count > 0)
-            {
-                PlaceGroupInSystemAreaOnMonitor(webLinksGroup, occupied, cols, rows, currentStartCol, settings.ShortcutDirection, mon, monitors);
+                if (shortcutsGroup.Count > 0)
+                {
+                    int lastShortcutCol = PlaceGroupInSystemAreaOnMonitor(shortcutsGroup, occupied, cols, rows, currentStartCol, settings.ShortcutDirection, mon, monitors, boundedColumnBlock: true);
+                    currentStartCol = Math.Min(cols - 1, lastShortcutCol + 1 + colGap);
+                }
+
+                if (sortedFilesGroup.Count > 0)
+                {
+                    int lastFileCol = PlaceGroupInSystemAreaOnMonitor(sortedFilesGroup, occupied, cols, rows, currentStartCol, settings.FileDirection, mon, monitors, boundedColumnBlock: true);
+                    currentStartCol = Math.Min(cols - 1, lastFileCol + 1 + colGap);
+                }
+
+                if (webLinksGroup.Count > 0)
+                {
+                    PlaceGroupInSystemAreaOnMonitor(webLinksGroup, occupied, cols, rows, currentStartCol, settings.ShortcutDirection, mon, monitors, boundedColumnBlock: true);
+                }
             }
 
             shortcutsGroupOut.AddRange(shortcutsGroup);
@@ -1314,9 +1373,51 @@ public class DeskManagerService
             var rest = remaining.Where(i => !allOrdered.Contains(i));
             allOrdered.AddRange(SortFileGroup(rest, settings.FileSortBy, settings.FoldersBeforeFiles));
 
-            PlaceGroupInSystemAreaOnMonitor(allOrdered, occupied, cols, rows, 0, settings.ShortcutDirection, mon, monitors);
+            PlaceGroupInSystemAreaOnMonitor(allOrdered, occupied, cols, rows, 0, settings.ShortcutDirection, mon, monitors, boundedColumnBlock: false);
             SplitIconsIntoThreeGroups(allOrdered, settings, out shortcutsGroupOut, out filesGroupOut, out webLinksGroupOut);
         }
+    }
+
+    private int PlaceGroupFullWidthRowMajor(
+        IEnumerable<DesktopIconItem> group,
+        bool[,] occupied,
+        int cols,
+        int rows,
+        int startRow,
+        MonitorInfo mon,
+        List<MonitorInfo> monitors)
+    {
+        int maxRowUsed = startRow;
+        foreach (var icon in group)
+        {
+            bool placed = false;
+            for (int r = startRow; r < rows && !placed; r++)
+            {
+                for (int c = 0; c < cols && !placed; c++)
+                {
+                    if (!occupied[c, r])
+                    {
+                        occupied[c, r] = true;
+                        SetIconToCellOnMonitor(icon, c, r, mon, monitors);
+                        maxRowUsed = Math.Max(maxRowUsed, r);
+                        placed = true;
+                    }
+                }
+            }
+            for (int r = 0; r < startRow && !placed; r++)
+            {
+                for (int c = 0; c < cols && !placed; c++)
+                {
+                    if (!occupied[c, r])
+                    {
+                        occupied[c, r] = true;
+                        SetIconToCellOnMonitor(icon, c, r, mon, monitors);
+                        placed = true;
+                    }
+                }
+            }
+        }
+        return maxRowUsed;
     }
 
     private int PlaceGroupInSystemAreaOnMonitor(
@@ -1327,17 +1428,20 @@ public class DeskManagerService
         int startCol,
         string direction,
         MonitorInfo mon,
-        List<MonitorInfo> monitors)
+        List<MonitorInfo> monitors,
+        bool boundedColumnBlock = true)
     {
+        var groupList = group as IList<DesktopIconItem> ?? group.ToList();
+        if (groupList.Count == 0) return startCol;
+
         int maxColUsed = startCol;
-        bool topToBottom = !string.Equals(direction, "Left to Right", StringComparison.OrdinalIgnoreCase);
+        bool topToBottom = string.Equals(direction, "Top to Bottom", StringComparison.OrdinalIgnoreCase);
 
-        foreach (var icon in group)
+        if (topToBottom)
         {
-            bool placed = false;
-
-            if (topToBottom)
+            foreach (var icon in groupList)
             {
+                bool placed = false;
                 for (int c = startCol; c < cols && !placed; c++)
                 {
                     for (int r = 0; r < rows && !placed; r++)
@@ -1364,17 +1468,79 @@ public class DeskManagerService
                     }
                 }
             }
-            else
+        }
+        else
+        {
+            // Left to Right: determine the target column span for this group so separated groups stay side-by-side
+            int targetMaxCol = cols - 1;
+            if (boundedColumnBlock && !string.Equals(direction, "Left to Right (Full Screen Width)", StringComparison.OrdinalIgnoreCase))
             {
+                int freeCellsFound = 0;
+                int minColsDesired = groupList.Count > 1 ? Math.Min(groupList.Count, 4) : 1;
+                int colsCounted = 0;
+                targetMaxCol = startCol;
+
+                for (int c = startCol; c < cols; c++)
+                {
+                    int colFree = 0;
+                    for (int r = 0; r < rows; r++)
+                    {
+                        if (!occupied[c, r]) colFree++;
+                    }
+                    if (colFree > 0)
+                    {
+                        freeCellsFound += colFree;
+                        colsCounted++;
+                        targetMaxCol = c;
+                        if (freeCellsFound >= groupList.Count && colsCounted >= minColsDesired)
+                            break;
+                    }
+                }
+            }
+
+            foreach (var icon in groupList)
+            {
+                bool placed = false;
+
+                // 1. Primary pass: fill Left-to-Right (row by row) across startCol .. targetMaxCol
                 for (int r = 0; r < rows && !placed; r++)
                 {
-                    for (int c = startCol; c < cols && !placed; c++)
+                    for (int c = startCol; c <= targetMaxCol && c < cols && !placed; c++)
                     {
                         if (!occupied[c, r])
                         {
                             occupied[c, r] = true;
                             SetIconToCellOnMonitor(icon, c, r, mon, monitors);
                             maxColUsed = Math.Max(maxColUsed, c);
+                            placed = true;
+                        }
+                    }
+                }
+
+                // 2. Overflow fallback: any remaining columns to the right
+                for (int r = 0; r < rows && !placed; r++)
+                {
+                    for (int c = targetMaxCol + 1; c < cols && !placed; c++)
+                    {
+                        if (!occupied[c, r])
+                        {
+                            occupied[c, r] = true;
+                            SetIconToCellOnMonitor(icon, c, r, mon, monitors);
+                            maxColUsed = Math.Max(maxColUsed, c);
+                            placed = true;
+                        }
+                    }
+                }
+
+                // 3. Final fallback: any free cell to the left of startCol
+                for (int r = 0; r < rows && !placed; r++)
+                {
+                    for (int c = 0; c < startCol && !placed; c++)
+                    {
+                        if (!occupied[c, r])
+                        {
+                            occupied[c, r] = true;
+                            SetIconToCellOnMonitor(icon, c, r, mon, monitors);
                             placed = true;
                         }
                     }

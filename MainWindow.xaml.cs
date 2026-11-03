@@ -745,10 +745,14 @@ public partial class MainWindow : Window
             Grid.SetColumn(ruleCombo, 1);
             formGrid.Children.Add(ruleCombo);
 
-            // Row 4: Sort Order Inside Box
-            AddFormLabelWithHelp(formGrid, 4, "Sort Inside Box:",
-                "• Keep Grid Position: Snaps each icon to the exact grid cell inside the box where you dropped it.\n• Domain (A-Z) / Domain (Most Links First): Groups internet shortcuts (.url) by website domain.\n• Name (A-Z) / Date Modified: Fills the box cleanly from top-left to bottom-right.");
-            var sortCombo = new ComboBox { Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(6, 4, 6, 4) };
+            // Row 4: Sort Order & Fill Direction Inside Box
+            AddFormLabelWithHelp(formGrid, 4, "Sort & Fill Direction:",
+                "• Sort Order: Keep Grid Position, Name (A-Z), Domain (A-Z), Domain (Most Links First), or Date Modified.\n• Fill Direction: 'Left to Right' (default) fills icons across each row inside the box; 'Top to Bottom' fills down each column inside the box.");
+            var sortRowGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            sortRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            sortRowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
+
+            var sortCombo = new ComboBox { Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(6, 4, 6, 4) };
             foreach (string s in new[] { "Keep Grid Position", "Name (A-Z)", "Domain (A-Z)", "Domain (Most Links First)", "Date Modified" })
             {
                 sortCombo.Items.Add(s);
@@ -763,9 +767,30 @@ public partial class MainWindow : Window
                     _service.SaveState();
                 }
             };
-            Grid.SetRow(sortCombo, 4);
-            Grid.SetColumn(sortCombo, 1);
-            formGrid.Children.Add(sortCombo);
+            Grid.SetColumn(sortCombo, 0);
+            sortRowGrid.Children.Add(sortCombo);
+
+            var fillDirCombo = new ComboBox { Padding = new Thickness(6, 4, 6, 4), ToolTip = "Fill direction inside this Gray Box ('Left to Right' default or 'Top to Bottom')" };
+            foreach (string fd in new[] { "Left to Right", "Top to Bottom" })
+            {
+                fillDirCombo.Items.Add(fd);
+            }
+            fillDirCombo.SelectedItem = string.IsNullOrWhiteSpace(area.FillDirection) ? "Left to Right" : area.FillDirection;
+            if (fillDirCombo.SelectedItem == null) fillDirCombo.SelectedIndex = 0;
+            fillDirCombo.SelectionChanged += (_, _) =>
+            {
+                if (fillDirCombo.SelectedItem is string fd)
+                {
+                    area.FillDirection = fd;
+                    _service.SaveState();
+                }
+            };
+            Grid.SetColumn(fillDirCombo, 1);
+            sortRowGrid.Children.Add(fillDirCombo);
+
+            Grid.SetRow(sortRowGrid, 4);
+            Grid.SetColumn(sortRowGrid, 1);
+            formGrid.Children.Add(sortRowGrid);
 
             // Row 5: Gray Shade Preset
             AddFormLabelWithHelp(formGrid, 5, "Gray Shade & Color:",
@@ -1323,7 +1348,7 @@ public partial class MainWindow : Window
         sys.WebLinksGroupMode = GetSelectedComboContent(WebLinksGroupCombo, "Separate Group (Own Columns)");
         sys.WebLinkSortBy = GetSelectedComboContent(WebLinkSortCombo, "Domain (A-Z)");
         sys.ShortcutSortBy = GetSelectedComboContent(ShortcutSortCombo, "Name (A-Z)");
-        sys.ShortcutDirection = GetSelectedComboContent(ShortcutDirectionCombo, "Top to Bottom");
+        sys.ShortcutDirection = GetSelectedComboContent(ShortcutDirectionCombo, "Left to Right");
         sys.SystemIconsFirst = SystemIconsFirstCheck.IsChecked == true;
 
         sys.FileSortBy = GetSelectedComboContent(FileSortCombo, "Category & Name");

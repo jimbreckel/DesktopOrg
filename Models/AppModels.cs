@@ -144,6 +144,7 @@ public class CustomAreaConfig
     // Auto-rule or manual assignment
     public string AutoRule { get; set; } = "Manual (Drop Icons Here)"; // or "Folders", "Shortcuts", "Documents", "Media", "Code & Archives"
     public string SortOrder { get; set; } = "Keep Grid Position"; // "Keep Grid Position", "Name (A-Z)", "Date Modified"
+    public string FillDirection { get; set; } = "Left to Right"; // "Left to Right", "Top to Bottom"
 
     // Explicitly tracked icon parsing names or display names assigned to this Custom Area
     public List<string> AssignedIconKeys { get; set; } = new();
@@ -172,6 +173,7 @@ public class CustomAreaConfig
         IsVisible = IsVisible,
         AutoRule = AutoRule,
         SortOrder = SortOrder,
+        FillDirection = FillDirection,
         AssignedIconKeys = new List<string>(AssignedIconKeys),
         CachedItems = CachedItems.Select(i => i.Clone()).ToList()
     };
@@ -193,8 +195,9 @@ public class SystemAreaSettings
 
     // Shortcut arrangement options
     public string ShortcutSortBy { get; set; } = "Name (A-Z)"; // "Name (A-Z)", "Date Modified", "Category"
-    public string ShortcutDirection { get; set; } = "Top to Bottom"; // "Top to Bottom", "Left to Right"
+    public string ShortcutDirection { get; set; } = "Left to Right"; // "Left to Right", "Top to Bottom", "Left to Right (Full Screen Width)"
     public bool SystemIconsFirst { get; set; } = true;
+    public bool MigratedShortcutDirectionDefaultV2 { get; set; } = false;
 
     // File arrangement options
     public string FileSortBy { get; set; } = "Category & Name"; // "Category & Name", "Name (A-Z)", "Date Modified", "Extension"

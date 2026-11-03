@@ -486,7 +486,8 @@
 
                 <!-- App Shortcuts Sorting Options Accordion -->
                 <Border Style="{StaticResource CardBorder}">
-                    <Expander Header="App Shortcuts Sorting Options"
+                    <Expander Header="App Shortcuts &amp; Fill Direction Options"
+                              IsExpanded="True"
                               FontWeight="SemiBold"
                               FontSize="13"
                               Foreground="#111827"
@@ -516,15 +517,16 @@
                             </ComboBox>
 
                             <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-                                <TextBlock Text="Fill Direction:" VerticalAlignment="Center" Foreground="#374151"/>
+                                <TextBlock Text="Shortcuts Fill Direction:" VerticalAlignment="Center" Foreground="#374151"/>
                                 <Border Style="{StaticResource HelpCircleBadge}"
-                                        ToolTip="'Top to Bottom' fills icons down each column first (standard Windows style). 'Left to Right' fills icons across rows.">
+                                        ToolTip="• Left to Right (Default): Fills shortcuts horizontally left-to-right across each row within the group's columns.&#x0a;• Top to Bottom: Fills shortcuts vertically top-down down each column first.&#x0a;• Left to Right (Full Screen Width): Fills shortcuts across the entire width of the screen before wrapping to the next row.">
                                     <TextBlock Style="{StaticResource HelpCircleText}"/>
                                 </Border>
                             </StackPanel>
                             <ComboBox x:Name="ShortcutDirectionCombo" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" SelectionChanged="SystemAreaOption_Changed">
-                                <ComboBoxItem Content="Top to Bottom"/>
                                 <ComboBoxItem Content="Left to Right"/>
+                                <ComboBoxItem Content="Top to Bottom"/>
+                                <ComboBoxItem Content="Left to Right (Full Screen Width)"/>
                             </ComboBox>
 
                             <CheckBox x:Name="SystemIconsFirstCheck"
