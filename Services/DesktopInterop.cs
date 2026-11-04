@@ -1187,6 +1187,106 @@ public static class DesktopInterop
 
     #region Monitor Signature & Screen Info
 
+    private const int MONITORINFOF_PRIMARY = 0x00000001;
+    private static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
+
+    private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MONITORINFOEXW
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string szDevice;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool GetMonitorInfoW(IntPtr hMonitor, ref MONITORINFOEXW lpmi);
+
+    private sealed class RawDisplayScreen
+    {
+        public string DeviceName { get; init; } = string.Empty;
+        public bool Primary { get; init; }
+        public Rectangle Bounds { get; init; }
+        public Rectangle WorkingArea { get; init; }
+    }
+
+    private static List<RawDisplayScreen> EnumeratePhysicalScreens()
+    {
+        var screens = new List<RawDisplayScreen>();
+        IntPtr prevDpiCtx = IntPtr.Zero;
+        try
+        {
+            prevDpiCtx = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        catch
+        {
+            // Ignore on older OS builds
+        }
+
+        try
+        {
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (IntPtr hMon, IntPtr _, ref RECT _, IntPtr _) =>
+            {
+                var mi = new MONITORINFOEXW { cbSize = Marshal.SizeOf<MONITORINFOEXW>() };
+                if (GetMonitorInfoW(hMon, ref mi))
+                {
+                    int x = mi.rcMonitor.Left;
+                    int y = mi.rcMonitor.Top;
+                    int w = Math.Max(1, mi.rcMonitor.Right - mi.rcMonitor.Left);
+                    int h = Math.Max(1, mi.rcMonitor.Bottom - mi.rcMonitor.Top);
+
+                    int wx = mi.rcWork.Left;
+                    int wy = mi.rcWork.Top;
+                    int ww = Math.Max(1, mi.rcWork.Right - mi.rcWork.Left);
+                    int wh = Math.Max(1, mi.rcWork.Bottom - mi.rcWork.Top);
+
+                    screens.Add(new RawDisplayScreen
+                    {
+                        DeviceName = mi.szDevice?.Trim() ?? string.Empty,
+                        Primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0,
+                        Bounds = new Rectangle(x, y, w, h),
+                        WorkingArea = new Rectangle(wx, wy, ww, wh)
+                    });
+                }
+                return true;
+            }, IntPtr.Zero);
+        }
+        catch
+        {
+            // Fallback handled below
+        }
+        finally
+        {
+            if (prevDpiCtx != IntPtr.Zero)
+            {
+                try { SetThreadDpiAwarenessContext(prevDpiCtx); } catch { }
+            }
+        }
+
+        if (screens.Count == 0)
+        {
+            foreach (var s in System.Windows.Forms.Screen.AllScreens)
+            {
+                screens.Add(new RawDisplayScreen
+                {
+                    DeviceName = s.DeviceName,
+                    Primary = s.Primary,
+                    Bounds = s.Bounds,
+                    WorkingArea = s.WorkingArea
+                });
+            }
+        }
+
+        return screens.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList();
+    }
+
     public static (int LvOriginX, int LvOriginY) GetTargetMonitorListViewOrigin(MonitorInfo target, List<MonitorInfo> monitors)
     {
         int rawMinX = monitors.Count > 0 ? monitors.Min(m => m.X) : 0;
@@ -1197,16 +1297,16 @@ public static class DesktopInterop
     public static List<MonitorInfo> GetMonitors()
     {
         var list = new List<MonitorInfo>();
-        var allScreens = System.Windows.Forms.Screen.AllScreens.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToList();
+        var allScreens = EnumeratePhysicalScreens();
         var primaryScreen = allScreens.FirstOrDefault(s => s.Primary) ?? allScreens.FirstOrDefault();
         var hardwareNames = GetMonitorHardwareFriendlyNames();
 
         var leftScreens = primaryScreen != null
             ? allScreens.Where(s => !s.Primary && s.Bounds.Right <= primaryScreen.Bounds.Left + 40).OrderBy(s => s.Bounds.X).ToList()
-            : new List<System.Windows.Forms.Screen>();
+            : new List<RawDisplayScreen>();
         var rightScreens = primaryScreen != null
             ? allScreens.Where(s => !s.Primary && s.Bounds.Left >= primaryScreen.Bounds.Right - 40).OrderBy(s => s.Bounds.X).ToList()
-            : new List<System.Windows.Forms.Screen>();
+            : new List<RawDisplayScreen>();
 
         int num = 1;
         foreach (var screen in allScreens)
